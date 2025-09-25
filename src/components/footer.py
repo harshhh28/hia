@@ -40,7 +40,7 @@ def show_footer(in_sidebar=False):
             <p style='
                 font-family: "Source Sans Pro", sans-serif;
                 color: #64B5F6;
-                font-size: 0.75rem;
+                font-size: 0.76rem;
                 letter-spacing: 0.02em;
                 margin: 0;
                 opacity: 0.95;
@@ -92,7 +92,7 @@ def show_footer(in_sidebar=False):
                        style='
                            color: #1976D2;
                            text-decoration: none;
-                           font-weight: 500;
+                           font-weight: 600;
                            transition: all 0.2s ease;
                            display: inline-flex;
                            align-items: center;
