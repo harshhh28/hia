@@ -4,3 +4,9 @@ groq>=0.18.0
 pdfplumber>=0.11.5
 filetype>=1.2.0
 gotrue
+langchain
+langchain-community
+langchain-huggingface
+faiss-cpu
+sentence-transformers
+langchain-text-splitters
