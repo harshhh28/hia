@@ -8,6 +8,7 @@ class AnalysisAgent:
     and implementing in-context learning from previous analyses.
     """
     
+
     def __init__(self, supabase_client=None):
         self.model_manager = ModelManager()
         self.supabase = supabase_client  # Store supabase client for persistent learning
