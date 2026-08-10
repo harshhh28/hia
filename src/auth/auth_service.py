@@ -309,11 +309,16 @@ class AuthService:
                         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
                     );
                     
-                    CREATE INDEX IF NOT EXISTS idx_analysis_learnings_user_id ON analysis_learnings(user_id);
-                    CREATE INDEX IF NOT EXISTS idx_analysis_learnings_indicator ON analysis_learnings(indicator);
-                    CREATE INDEX IF NOT EXISTS idx_analysis_learnings_condition ON analysis_learnings(condition);
-                    CREATE INDEX IF NOT EXISTS idx_analysis_learnings_archived ON analysis_learnings(is_archived);
-                    CREATE INDEX IF NOT EXISTS idx_analysis_learnings_embedding ON analysis_learnings USING hnsw (embedding vector_cosine_ops);
+                    CREATE INDEX IF NOT EXISTS idx_analysis_learnings_user_id 
+                        ON analysis_learnings(user_id);
+                    CREATE INDEX IF NOT EXISTS idx_analysis_learnings_indicator 
+                        ON analysis_learnings(indicator);
+                    CREATE INDEX IF NOT EXISTS idx_analysis_learnings_condition 
+                        ON analysis_learnings(condition);
+                    CREATE INDEX IF NOT EXISTS idx_analysis_learnings_archived 
+                        ON analysis_learnings(is_archived);
+                    CREATE INDEX IF NOT EXISTS idx_analysis_learnings_embedding 
+                        ON analysis_learnings USING hnsw (embedding vector_cosine_ops);
                     """
                     # Note: Full SQL execution would require admin client
                     # For now, this table should be created manually in Supabase console

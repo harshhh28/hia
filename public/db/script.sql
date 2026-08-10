@@ -53,10 +53,14 @@ CREATE TABLE analysis_learnings (
 );
 
 -- Indexes for analysis_learnings
-CREATE INDEX idx_analysis_learnings_user_id ON analysis_learnings(user_id);
-CREATE INDEX idx_analysis_learnings_indicator ON analysis_learnings(indicator);
-CREATE INDEX idx_analysis_learnings_condition ON analysis_learnings(condition);
-CREATE INDEX idx_analysis_learnings_archived ON analysis_learnings(is_archived);
+CREATE INDEX idx_analysis_learnings_user_id 
+    ON analysis_learnings(user_id);
+CREATE INDEX idx_analysis_learnings_indicator 
+    ON analysis_learnings(indicator);
+CREATE INDEX idx_analysis_learnings_condition 
+    ON analysis_learnings(condition);
+CREATE INDEX idx_analysis_learnings_archived 
+    ON analysis_learnings(is_archived);
 
 -- HNSW index for similarity search
 CREATE INDEX idx_analysis_learnings_embedding ON analysis_learnings USING hnsw (embedding vector_cosine_ops);
