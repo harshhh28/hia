@@ -292,26 +292,28 @@ class AuthService:
                 try:
                     # Create the analysis_learnings table
                     create_table_sql = """
+                    CREATE EXTENSION IF NOT EXISTS vector;
+                    
                     CREATE TABLE IF NOT EXISTS analysis_learnings (
                         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        user_id UUID NOT NULL REFERENCES users(id),
                         indicator TEXT NOT NULL,
                         value_range TEXT,
-                        condition TEXT NOT NULL,
+                        condition TEXT,
                         outcome TEXT NOT NULL,
                         patient_demographics JSONB,
-                        confidence FLOAT DEFAULT 0.0,
-                        usage_count INT DEFAULT 1,
-                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                        is_archived BOOLEAN DEFAULT FALSE
+                        confidence FLOAT DEFAULT 0.6,
+                        usage_count INTEGER DEFAULT 1,
+                        is_archived BOOLEAN DEFAULT FALSE,
+                        embedding vector(384),
+                        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
                     );
                     
-                    CREATE INDEX IF NOT EXISTS idx_analysis_learnings_indicator 
-                        ON analysis_learnings(indicator);
-                    CREATE INDEX IF NOT EXISTS idx_analysis_learnings_condition 
-                        ON analysis_learnings(condition);
-                    CREATE INDEX IF NOT EXISTS idx_analysis_learnings_archived 
-                        ON analysis_learnings(is_archived);
+                    CREATE INDEX IF NOT EXISTS idx_analysis_learnings_user_id ON analysis_learnings(user_id);
+                    CREATE INDEX IF NOT EXISTS idx_analysis_learnings_indicator ON analysis_learnings(indicator);
+                    CREATE INDEX IF NOT EXISTS idx_analysis_learnings_condition ON analysis_learnings(condition);
+                    CREATE INDEX IF NOT EXISTS idx_analysis_learnings_archived ON analysis_learnings(is_archived);
+                    CREATE INDEX IF NOT EXISTS idx_analysis_learnings_embedding ON analysis_learnings USING hnsw (embedding vector_cosine_ops);
                     """
                     # Note: Full SQL execution would require admin client
                     # For now, this table should be created manually in Supabase console

@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import streamlit as st
 from agents.model_manager import ModelManager
+from langchain_huggingface import HuggingFaceEmbeddings
 
 class AnalysisAgent:
     """
@@ -12,6 +13,11 @@ class AnalysisAgent:
     def __init__(self, supabase_client=None):
         self.model_manager = ModelManager()
         self.supabase = supabase_client  # Store supabase client for persistent learning
+        try:
+            self.embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+        except Exception as e:
+            print(f"Warning: Could not initialize embeddings: {e}")
+            self.embeddings = None
         self._init_state()
         
     def _init_state(self):
@@ -66,8 +72,8 @@ class AnalysisAgent:
         # Process data before sending to model
         processed_data = self._preprocess_data(data)
         
-        # Enhance prompt with in-context learning (only if chat_history is provided)
-        enhanced_prompt = self._build_enhanced_prompt(system_prompt, processed_data, chat_history) if chat_history else system_prompt
+        # Enhance prompt with in-context learning from knowledge base and optionally chat history
+        enhanced_prompt = self._build_enhanced_prompt(system_prompt, processed_data, chat_history)
         
         # Generate analysis using model manager
         result = self.model_manager.generate_analysis(processed_data, enhanced_prompt)
@@ -147,9 +153,15 @@ class AnalysisAgent:
         """Store a learning record to Supabase for persistence."""
         if not self.supabase:
             return  # Supabase client not available
+            
+        # Get user_id from session state to prevent cross-user leakage
+        user_id = st.session_state.get("user", {}).get("id")
+        if not user_id:
+            return
         
         try:
             learning_record = {
+                "user_id": user_id,
                 "indicator": indicator.lower().strip(),
                 "value_range": value_range or "not_specified",
                 "condition": condition.lower().strip(),
@@ -158,6 +170,11 @@ class AnalysisAgent:
                 "confidence": 0.6,  # Default confidence for new learnings
                 "usage_count": 1
             }
+            
+            # Generate embedding for the learning
+            if self.embeddings:
+                text_to_embed = f"Indicator: {indicator}. Condition: {condition}. Outcome: {outcome}"
+                learning_record["embedding"] = self.embeddings.embed_query(text_to_embed)
             
             self.supabase.table("analysis_learnings").insert(learning_record).execute()
         except Exception as e:
@@ -226,9 +243,14 @@ class AnalysisAgent:
         return "\n".join(context_items) if context_items else ""
     
     def _get_database_context(self, report_text, patient_profile):
-        """Retrieve relevant learnings from persistent database."""
+        """Retrieve relevant learnings from persistent database using semantic similarity."""
         context_items = []
         
+        # Get user_id from session state to prevent cross-user leakage
+        user_id = st.session_state.get("user", {}).get("id")
+        if not user_id:
+            return context_items
+            
         try:
             # Extract health indicators from report
             key_indicators = [
@@ -238,17 +260,33 @@ class AnalysisAgent:
             
             for indicator in key_indicators:
                 if indicator in report_text:
-                    # Query database for learnings about this indicator
-                    response = (
-                        self.supabase.table("analysis_learnings")
-                        .select("indicator, condition, outcome, confidence, usage_count")
-                        .eq("indicator", indicator.lower())
-                        .eq("is_archived", False)
-                        .order("confidence", desc=True)
-                        .order("usage_count", desc=True)
-                        .limit(3)
-                        .execute()
-                    )
+                    if self.embeddings:
+                        # Semantic search via RPC
+                        query_text = f"Indicator: {indicator}. Find relevant health outcomes and conditions."
+                        query_embedding = self.embeddings.embed_query(query_text)
+                        
+                        response = self.supabase.rpc(
+                            "match_analysis_learnings",
+                            {
+                                "query_embedding": query_embedding,
+                                "match_user_id": user_id,
+                                "match_threshold": 0.5,
+                                "match_count": 3
+                            }
+                        ).execute()
+                    else:
+                        # Fallback to exact match if embeddings failed to load
+                        response = (
+                            self.supabase.table("analysis_learnings")
+                            .select("indicator, condition, outcome, confidence, usage_count")
+                            .eq("user_id", user_id)
+                            .eq("indicator", indicator.lower())
+                            .eq("is_archived", False)
+                            .order("confidence", desc=True)
+                            .order("usage_count", desc=True)
+                            .limit(3)
+                            .execute()
+                        )
                     
                     if response.data:
                         for record in response.data:
