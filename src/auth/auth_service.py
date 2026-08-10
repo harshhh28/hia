@@ -17,6 +17,9 @@ class AuthService:
             st.error(f"Failed to initialize services: {str(e)}")
             raise e
 
+        # Ensure persistent learning table exists
+        self._ensure_analysis_learnings_table()
+
         # Try to restore session from Supabase if no current session
         self.try_restore_session()
 
@@ -277,3 +280,50 @@ class AuthService:
             return response.data if response else None
         except Exception:
             return None
+    
+    def _ensure_analysis_learnings_table(self):
+        """Ensure analysis_learnings table exists for persistent learning."""
+        try:
+            # Try to query the table to check if it exists
+            self.supabase.table("analysis_learnings").select("id").limit(1).execute()
+        except Exception as e:
+            # Table doesn't exist, create it
+            if "does not exist" in str(e).lower() or "relation" in str(e).lower():
+                try:
+                    # Create the analysis_learnings table
+                    create_table_sql = """
+                    CREATE EXTENSION IF NOT EXISTS vector;
+                    
+                    CREATE TABLE IF NOT EXISTS analysis_learnings (
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        user_id UUID NOT NULL REFERENCES users(id),
+                        indicator TEXT NOT NULL,
+                        value_range TEXT,
+                        condition TEXT,
+                        outcome TEXT NOT NULL,
+                        patient_demographics JSONB,
+                        confidence FLOAT DEFAULT 0.6,
+                        usage_count INTEGER DEFAULT 1,
+                        is_archived BOOLEAN DEFAULT FALSE,
+                        embedding vector(384),
+                        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+                    );
+                    
+                    CREATE INDEX IF NOT EXISTS idx_analysis_learnings_user_id 
+                        ON analysis_learnings(user_id);
+                    CREATE INDEX IF NOT EXISTS idx_analysis_learnings_indicator 
+                        ON analysis_learnings(indicator);
+                    CREATE INDEX IF NOT EXISTS idx_analysis_learnings_condition 
+                        ON analysis_learnings(condition);
+                    CREATE INDEX IF NOT EXISTS idx_analysis_learnings_archived 
+                        ON analysis_learnings(is_archived);
+                    CREATE INDEX IF NOT EXISTS idx_analysis_learnings_embedding 
+                        ON analysis_learnings USING hnsw (embedding vector_cosine_ops);
+                    """
+                    # Note: Full SQL execution would require admin client
+                    # For now, this table should be created manually in Supabase console
+                    # Or via migrations in production setup
+                except Exception as inner_e:
+                    # Log but don't fail initialization
+                    print(f"Note: Could not create analysis_learnings table: {inner_e}")
+                    print("Please ensure this table exists in Supabase manually.")

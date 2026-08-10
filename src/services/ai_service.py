@@ -1,12 +1,16 @@
 import streamlit as st
 from agents.analysis_agent import AnalysisAgent
-# from agents.chat_agent import ChatAgent
 
 
 def init_analysis_state():
     """Initialize analysis-related session state variables."""
     if "analysis_agent" not in st.session_state:
-        st.session_state.analysis_agent = AnalysisAgent()
+        # Get supabase client from auth_service if available
+        supabase_client = None
+        if "auth_service" in st.session_state:
+            supabase_client = st.session_state.auth_service.supabase
+        
+        st.session_state.analysis_agent = AnalysisAgent(supabase_client=supabase_client)
 
     if "chat_agent" not in st.session_state:
         try:
